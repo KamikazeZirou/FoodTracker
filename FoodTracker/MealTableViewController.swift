@@ -19,8 +19,15 @@ class MealTableViewController: UITableViewController {
         // Use the edit button item provided by the table view controller.
         navigationItem.leftBarButtonItem = editButtonItem
         
-        // Load the sample data.
-        loadSampleMeals()
+
+        // Load any saved meals, otherwise load sample data.
+        let savedMeals = loadMeals()
+        if !savedMeals.isEmpty {
+            meals += savedMeals
+        } else {
+            // Load the sample data.
+            loadSampleMeals()
+        }
     }
 
     // MARK: - Table view data source
@@ -61,6 +68,7 @@ class MealTableViewController: UITableViewController {
         if editingStyle == .delete {
             // Delete the row from the data source
             meals.remove(at: indexPath.row)
+            saveMeals()
             tableView.deleteRows(at: [indexPath], with: .fade)
         } else if editingStyle == .insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
@@ -126,7 +134,11 @@ class MealTableViewController: UITableViewController {
                 meals.append(meal)
                 tableView.insertRows(at: [newIndexPath], with: .automatic)
             }
+            
+            // Save the meals.
+            saveMeals()
         }
+        
     }
     
     //MARK: Private Methods
@@ -149,5 +161,25 @@ class MealTableViewController: UITableViewController {
         }
         
         meals += [meal1, meal2, meal3]
+    }
+    
+    private func saveMeals() {
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: self.meals, requiringSecureCoding: true)
+            UserDefaults.standard.set(data, forKey: "meals")
+            os_log("Meals successfully saved.", log: OSLog.default, type: .debug)
+        } catch {
+            os_log("Failed to save meals...", log: OSLog.default, type: .error)
+        }
+    }
+    
+    private func loadMeals() -> [Meal] {
+        guard let data = UserDefaults.standard.data(forKey: "meals") else { return [] }
+        do {
+            return (try NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSObject.self], from: data) as? [Meal]) ?? []
+        } catch let error {
+            print(error)
+            return []
+        }
     }
 }
